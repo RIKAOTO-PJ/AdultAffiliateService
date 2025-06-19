@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
@@ -43,9 +44,14 @@ public abstract class DynamoDB<E> {
             client = DynamoDbClient.builder()
                     .region(Region.AP_NORTHEAST_1)
                     .build();
-        }
+        // GitHub Actions上で実行された場合、環境変数からCredentialを提供する
+        } else if (System.getenv("CI") != null) {
+            client = DynamoDbClient.builder()
+                    .region(Region.AP_NORTHEAST_1)
+                    .credentialsProvider(EnvironmentVariableCredentialsProvider.create())
+                    .build();
         // ローカルで実行された場合、ProfileCredentialsProviderを使用する
-        else {
+        } else {
             client = DynamoDbClient.builder()
                     .region(Region.AP_NORTHEAST_1)
                     .credentialsProvider(ProfileCredentialsProvider.create())
