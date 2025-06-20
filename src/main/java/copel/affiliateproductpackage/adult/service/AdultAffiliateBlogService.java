@@ -6,14 +6,19 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
+import copel.affiliateproductpackage.adult.api.TwitterAPI;
+import copel.affiliateproductpackage.adult.api.TwitterAPI.MediaType;
 import copel.affiliateproductpackage.adult.api.WordPressRESTAPI;
 import copel.affiliateproductpackage.adult.api.WordPressRESTAPI.WordPressCategory;
 import copel.affiliateproductpackage.adult.api.WordPressRESTAPI.WordPressCategoryLot;
 import copel.affiliateproductpackage.adult.api.WordPressRESTAPI.WordPressTag;
 import copel.affiliateproductpackage.adult.api.WordPressRESTAPI.WordPressTagLot;
 import copel.affiliateproductpackage.adult.api.商品情報API;
+import copel.affiliateproductpackage.adult.api.entity.TwitterAPIリクエスト;
+import copel.affiliateproductpackage.adult.api.entity.TwitterAPIレスポンス;
 import copel.affiliateproductpackage.adult.api.entity.WordPressRESTAPIリクエスト;
 import copel.affiliateproductpackage.adult.api.entity.商品情報APIリクエスト;
 import copel.affiliateproductpackage.adult.api.entity.商品情報APIレスポンス;
@@ -26,6 +31,7 @@ import copel.affiliateproductpackage.adult.gpt.Gemini;
 import copel.affiliateproductpackage.adult.gpt.GptAnswer;
 import copel.affiliateproductpackage.adult.gpt.Prompt;
 import copel.affiliateproductpackage.adult.gpt.Transformer;
+import copel.affiliateproductpackage.adult.unit.Video;
 import copel.affiliateproductpackage.adult.unit.WebBrowser;
 import lombok.extern.slf4j.Slf4j;
 
@@ -62,6 +68,23 @@ public class AdultAffiliateBlogService {
      */
     private static final String WORDPRESS_APPLICATION_PASSWORD = System.getenv("WORDPRESS_APPLICATION_PASSWORD");
     /**
+     * 環境変数「TWITTER_API_KEY」
+     */
+    private final static String TWITTER_API_KEY = System.getenv("TWITTER_API_KEY");
+    /**
+     * 環境変数「TWITTER_API_SECRET」
+     */
+    private final static String TWITTER_API_SECRET = System.getenv("TWITTER_API_SECRET");
+    /**
+     * 環境変数「TWITTER_ACCESS_TOKEN」
+     */
+    private final static String TWITTER_ACCESS_TOKEN = System.getenv("TWITTER_ACCESS_TOKEN");
+    /**
+     * 環境変数「TWITTER_ACCESS_SECRET」
+     */
+    private final static String TWITTER_ACCESS_SECRET = System.getenv("TWITTER_ACCESS_SECRET");
+
+    /**
      * ISO形式の日付フォーマットパターン.
      */
     private static final String DATETIME_ISO_PATTERN = "yyyy-MM-dd'T'HH:mm:ss";
@@ -87,22 +110,21 @@ public class AdultAffiliateBlogService {
      * @throws InterruptedException
      */
     public static void execute() throws IOException, RuntimeException, InterruptedException {
-        // 商品を検索（2年前同日～7日前までの間の作品に限定）
+        // 商品を検索（3年前同日～1日前までの間の作品に限定）
         LocalDateTime today = LocalDate.now().atStartOfDay();
         商品情報APIリクエスト 商品情報APIリクエスト = new 商品情報APIリクエスト(FANZA_API_KEY, FANZA_AFFILIATE_ID);
         商品情報APIリクエスト.setKeyword("");
-        商品情報APIリクエスト.setSort("date");
-        商品情報APIリクエスト.setGteDate(today.minusYears(2).format(DateTimeFormatter.ofPattern(DATETIME_ISO_PATTERN)));
-        商品情報APIリクエスト.setLteDate(today.minusDays(7).format(DateTimeFormatter.ofPattern(DATETIME_ISO_PATTERN)));
-        商品情報APIリクエスト.setService("digital");
-        商品情報APIリクエスト.setFloor("videoa");
+        商品情報APIリクエスト.setSort("review");
+        商品情報APIリクエスト.setGteDate(today.minusYears(3).format(DateTimeFormatter.ofPattern(DATETIME_ISO_PATTERN)));
+        商品情報APIリクエスト.setLteDate(today.minusDays(1).format(DateTimeFormatter.ofPattern(DATETIME_ISO_PATTERN)));
         log.debug("商品情報APIリクエスト: {}", 商品情報APIリクエスト);
+
         商品情報APIレスポンス 商品情報APIレスポンス = 商品情報API.get(商品情報APIリクエスト);
-        log.info("検索結果: {}件", 商品情報APIレスポンス.getTotalCount());
+        log.info("総件数: {}件", 商品情報APIレスポンス.getTotalCount());
 
         // 商品がヒットしなかった場合、処理を終了する
         if (商品情報APIレスポンス.getTotalCount() < 1) {
-            log.info("商品がヒットしませんでした。処理を終了します。");
+            log.info("検索条件に一致する商品が存在しません。処理を終了します。");
             return;
         }
 
@@ -110,15 +132,28 @@ public class AdultAffiliateBlogService {
         RIKAOTO_PUBLISHED_PRODUCTEntityLot RIKAOTO_PUBLISHED_PRODUCTEntityLot = new RIKAOTO_PUBLISHED_PRODUCTEntityLot();
         RIKAOTO_PUBLISHED_PRODUCTEntityLot.fetchByPk(WORDPRESS_MEDIA_ID);
 
-        // まだ記事化していない商品を1つ選定
-        Item item = 商品情報APIレスポンス.getItems().stream()
-                .filter(element -> !RIKAOTO_PUBLISHED_PRODUCTEntityLot.exist(WORDPRESS_MEDIA_ID, element.getProduct_id()))
-                .findFirst()
-                .orElse(null);
+        // 記事化する対象の商品を選定する
+        Item item = null;
+        while (商品情報APIレスポンス.getHits() > 0 && item == null) {
+            // まだ記事化していない、かつサンプル動画が存在する、かつ2件以上のレビューを持つ商品を1つ選定
+            item = 商品情報APIレスポンス.getItems().stream()
+                    .filter(element -> element.hasSampleMovie())
+                    .filter(element -> element.hasReviewAtLeast(2))
+                    .filter(element -> !RIKAOTO_PUBLISHED_PRODUCTEntityLot.exist(WORDPRESS_MEDIA_ID, element.getProduct_id()))
+                    .findFirst()
+                    .orElse(null);
+
+            // 該当する商品がなければoffsetを更新し再検索
+            if (item == null) {
+                商品情報APIリクエスト.nextOffset();
+                商品情報APIレスポンス = 商品情報API.get(商品情報APIリクエスト);
+                log.info("まだ記事化していない、かつサンプル動画が存在する、かつ2件以上のレビューを持つ商品が見つかりませんでした。再検索します。リクエスト: {}", 商品情報APIリクエスト);
+            }
+        }
 
         // 記事化していない商品が1つもなければ、処理終了
         if (item == null) {
-            log.info("記事化していない商品がヒットしませんでした。処理を終了します。");
+            log.info("まだ記事化していない、かつサンプル動画が存在する、かつ2件以上のレビューを持つ商品がありません。検索条件に修正を加えるか、新商品が発売されるまでお待ちください。処理を終了します。");
             return;
         }
         log.info("記事化する商品: {}", item);
@@ -323,7 +358,6 @@ public class AdultAffiliateBlogService {
             entity.setProductId(item.getProduct_id());
             entity.save();
             log.info("RIKAOTO_PUBLISHED_PRODUCTテーブルにレコードを登録しました: {}", entity.toString());
-            log.info("全ての処理が正常に成功しました");
         } else {
             log.error("記事の投稿に失敗しました。アップロードしたメディアを削除します。");
             if (WordPressRESTAPI.deleteMedia(mediaId, WORDPRESS_USER_NAME, WORDPRESS_APPLICATION_PASSWORD)) {
@@ -331,6 +365,55 @@ public class AdultAffiliateBlogService {
             } else {
                 log.error("メディアの削除も失敗しました。削除失敗したメディアID: {}", mediaId);
             }
+        }
+
+        // Twitterで作品紹介する
+        try {
+            // mp4形式の動画が取得できるなら、ツイートを行う
+            String sampleMovieMp4Url = item.getSampleMovieMp4Url();
+            if (sampleMovieMp4Url == null) {
+                log.info("mp4形式の動画が見つからないため、ツイートはせず処理を正常に終了します");
+                return;
+            }
+
+            // 動画のバイナリデータをDL
+            Video video = new Video();
+            video.downloadAndRead(sampleMovieMp4Url);
+
+            // 動画をTwitterにULしメディアIDを取得する
+            String twetterMediaId = TwitterAPI.uploadMedia(video.getContent(), MediaType.Video, TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET);
+            if (twetterMediaId == null || twetterMediaId.isEmpty()) {
+                log.info("Twitterにアップロードできない動画のため、ツイートはせず処理を正常に終了します");
+                return;
+            }
+
+            // ツイート内容を生成する
+            Prompt ツイート生成プロンプト = new Prompt();
+            ツイート生成プロンプト.createPromptByFilePath("/prompt/アダルトブログツイート生成プロンプト.txt");
+            ツイート生成プロンプト.setValue(item.getTitle());
+            ツイート生成プロンプト.setValue(あらすじ);
+            ツイート生成プロンプト.setValue(review);
+            GptAnswer ツイート = transformer.generate(ツイート生成プロンプト.toString());
+            ツイート.clean();
+            log.debug("ツイートを生成しました: {}", ツイート);
+
+            // 作品の感想をツイート
+            TwitterAPIリクエスト request = new TwitterAPIリクエスト();
+            request.setText(ツイート.toString());
+            request.addMedia(twetterMediaId);
+            TwitterAPIレスポンス response = TwitterAPI.post(request, TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET);
+            log.info("動画付きツイートしました: {}", response);
+
+            // アフィリエイトリンクをリプライにぶら下げる
+            request = new TwitterAPIリクエスト();
+            request.setText(item.getAffiliateURL());
+            request.setReplyTweetId(response.getTweetId());
+            response = TwitterAPI.post(request, TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET);
+            log.info("アフィリエイトリンクをリプライしました: {}", response);
+
+            log.info("全ての処理が正常に成功しました");
+        } catch (IOException | InterruptedException | ExecutionException e) {
+            e.printStackTrace();
         }
     }
 }

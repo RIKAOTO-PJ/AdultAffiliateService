@@ -10,6 +10,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -44,16 +45,34 @@ public class 商品情報APIレスポンス {
     @JsonProperty("result")
     private Result result = new Result();
 
+    @JsonIgnore
     public int getStatusCode() {
         return this.result.getStatus();
     }
 
+    /**
+     * 指定した条件で絞り込んだ結果の総件数を取得します.
+     *
+     * @return 総件数
+     */
+    @JsonIgnore
     public int getTotalCount() {
         return this.result.getTotal_count();
     }
 
+    @JsonIgnore
     public List<Item> getItems() {
         return this.result.getItems();
+    }
+
+    /**
+     * 指定した条件で取得しこのオブジェクトにもつ商品の件数を返却します.
+     *
+     * @return 取得件数
+     */
+    @JsonIgnore
+    public int getHits() {
+        return this.result.getItems().size();
     }
 
     @Override
@@ -206,20 +225,45 @@ public class 商品情報APIレスポンス {
         private List<Campaign> campaign = new ArrayList<Campaign>();
 
         /**
+         * 引数で指定した件数以上のレビュー件数を持つかどうかを判定します.
+         *
+         * @param count レビュー件数
+         * @return 引数で指定した件数以上のレビュー件数を持てばtrue、それ以外はfalse
+         */
+        @JsonIgnore
+        public boolean hasReviewAtLeast(final int count) {
+            return this.review.getCount() >= count;
+        }
+
+        /**
+         * サンプル動画が存在するかどうかを判定します.
+         *
+         * @return サンプル動画が存在すればtrue、それ以外はfalse.
+         */
+        @JsonIgnore
+        public boolean hasSampleMovie() {
+            return this.sampleMovieURL != null && this.sampleMovieURL.hasMovie();
+        }
+
+        /**
          * サンプル動画の動画タグを生成する.
          *
          * @return 動画タグ
          */
+        @JsonIgnore
         public String getSampleMovieTag() {
+            if (!this.hasSampleMovie()) {
+                return "サンプル動画はありません";
+            }
             String mp4Url = this.getSampleMovieMp4Url();
             if (mp4Url != null) {
                 String result = "<video controls width=\"720\" height=\"480\" poster=\"{value1}\"><source src=\"{value2}\" type=\"video/mp4\">お使いのブラウザは動画タグに対応していません。</video>";
                 return result.replace("{value1}", this.getSampleImageURL().getSample_l().getImage().get(0)).replace("{value2}", mp4Url);
-            } else if (this.sampleMovieURL.getSize_720_480() != null) {
+            } else if (this.sampleMovieURL.getMaxSizeMovie() != null) {
                 String result = "<div class=\"video-container\"><iframe style=\"display: block; overflow: hidden;\" title=\"サンプル動画\" src=\"{value}\" width=\"720\" height=\"480\" frameborder=\"0\" scrolling=\"no\" allowfullscreen=\"allowfullscreen\"></iframe></div>";
-                return result.replace("{value}", this.sampleMovieURL.getSize_720_480());
+                return result.replace("{value}", this.sampleMovieURL.getMaxSizeMovie());
             } else {
-                return "";
+                return "サンプル動画はありません";
             }
         }
 
@@ -228,6 +272,7 @@ public class 商品情報APIレスポンス {
          *
          * @return サンプル動画のmp4ファイル
          */
+        @JsonIgnore
         public String getSampleMovieMp4Url() {
             String originalProductId = this.product_id;
             String url = String.format("https://cc3001.dmm.co.jp/litevideo/freepv/%s/%s/%s/%shhb.mp4",
@@ -347,6 +392,23 @@ public class 商品情報APIレスポンス {
 
         @JsonProperty("sp_flag")
         private int sp_flag;
+
+        @JsonIgnore
+        public boolean hasMovie() {
+            return (size_476_306 != null && !size_476_306.isEmpty()) ||
+                    (size_560_360 != null && !size_560_360.isEmpty()) ||
+                    (size_644_414 != null && !size_644_414.isEmpty()) ||
+                    (size_720_480 != null && !size_720_480.isEmpty());
+        }
+
+        @JsonIgnore
+        public String getMaxSizeMovie() {
+            if (size_720_480 != null && !size_720_480.isEmpty()) return size_720_480;
+            if (size_644_414 != null && !size_644_414.isEmpty()) return size_644_414;
+            if (size_560_360 != null && !size_560_360.isEmpty()) return size_560_360;
+            if (size_476_306 != null && !size_476_306.isEmpty()) return size_476_306;
+            return "";
+        }
     }
 
     @Data
@@ -375,6 +437,7 @@ public class 商品情報APIレスポンス {
          *
          * @return 女優名とジャンル名の文字列リスト.
          */
+        @JsonIgnore
         public List<String> getActressAndGenreList() {
             return Stream.concat(
                     actress.stream().map(Actress::getName),
@@ -390,6 +453,7 @@ public class 商品情報APIレスポンス {
          *
          * @return カンマ区切りのキーワード
          */
+        @JsonIgnore
         public String getActressWords() {
             return this.actress != null ? this.actress.stream().map(Actress::getName).collect(Collectors.joining(",")) : "";
         }
@@ -399,6 +463,7 @@ public class 商品情報APIレスポンス {
          *
          * @return カンマ区切りのキーワード
          */
+        @JsonIgnore
         public String getKeywords() {
             String genreWords = this.genre != null ? this.genre.stream().map(Genre::getName).collect(Collectors.joining(",")) : "";
             String actressWords = this.actress != null ? this.actress.stream().map(Actress::getName).collect(Collectors.joining(",")) : "";

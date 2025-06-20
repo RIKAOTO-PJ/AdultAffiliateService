@@ -1,5 +1,6 @@
 package copel.affiliateproductpackage.adult.api.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -51,14 +52,14 @@ public class 商品情報APIリクエスト {
      * 初期値：20　最大：100
      */
     @JsonProperty("hits")
-    private String hits;
+    private String hits = "100";
 
     /**
      * 検索開始位置
      * 初期値：1　最大：50000
      */
     @JsonProperty("offset")
-    private String offset;
+    private String offset = "1";
 
     /**
      * ソート順
@@ -161,11 +162,28 @@ public class 商品情報APIリクエスト {
      * @param site サイト
      */
     public 商品情報APIリクエスト(final String apiId, final String affiliateId) {
-        this(apiId, affiliateId, "FANZA");
+        this(apiId, affiliateId, "FANZA", "digital", "videoa");
     }
-    public 商品情報APIリクエスト(final String apiId, final String affiliateId, final String site) {
+    public 商品情報APIリクエスト(final String apiId, final String affiliateId, final String site, final String service, final String floor) {
         this.apiId = apiId;
         this.affiliateId = affiliateId;
         this.site = site;
+    }
+
+    /**
+     * offsetを次のOffsetページに更新します.
+     */
+    @JsonIgnore
+    public void nextOffset() {
+        if (this.offset == null || this.offset.isBlank()) {
+            throw new IllegalArgumentException("空またはnullのためoffsetを増やせません");
+        }
+        try {
+            int numOffset = Integer.parseInt(this.offset);
+            int numHits = Integer.parseInt(this.hits);
+            this.offset = String.valueOf(numOffset + numHits);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("数値に変換できない文字列がセットされているため、offsetを増やせませんでした。");
+        }
     }
 }

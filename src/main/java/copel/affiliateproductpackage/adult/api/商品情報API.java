@@ -43,7 +43,7 @@ public class 商品情報API {
     @SuppressWarnings("unchecked")
     public static 商品情報APIレスポンス get(final 商品情報APIリクエスト request) {
         try {
-            // ObjectMapper を使ってリクエストをMap化（snake_case）
+            // ObjectMapper を使ってリクエストをMap化
             ObjectMapper mapper = new ObjectMapper();
             mapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
             Map<String, Object> paramMap = mapper.convertValue(request, Map.class);
