@@ -21,6 +21,7 @@ import copel.affiliateproductpackage.adult.api.entity.TwitterAPIリクエスト;
 import copel.affiliateproductpackage.adult.api.entity.TwitterAPIレスポンス;
 import copel.affiliateproductpackage.adult.api.entity.WordPressRESTAPIリクエスト;
 import copel.affiliateproductpackage.adult.api.entity.商品情報APIリクエスト;
+import copel.affiliateproductpackage.adult.api.entity.商品情報APIリクエスト.フロア;
 import copel.affiliateproductpackage.adult.api.entity.商品情報APIレスポンス;
 import copel.affiliateproductpackage.adult.api.entity.商品情報APIレスポンス.Actress;
 import copel.affiliateproductpackage.adult.api.entity.商品情報APIレスポンス.Genre;
@@ -112,7 +113,7 @@ public class AdultAffiliateBlogService {
     public static void execute() throws IOException, RuntimeException, InterruptedException {
         // 商品を検索（3年前同日～1日前までの間の作品に限定）
         LocalDateTime today = LocalDate.now().atStartOfDay();
-        商品情報APIリクエスト 商品情報APIリクエスト = new 商品情報APIリクエスト(FANZA_API_KEY, FANZA_AFFILIATE_ID);
+        商品情報APIリクエスト 商品情報APIリクエスト = new 商品情報APIリクエスト(FANZA_API_KEY, FANZA_AFFILIATE_ID, フロア.FANZA_動画_素人);
         商品情報APIリクエスト.setKeyword("");
         商品情報APIリクエスト.setSort("review");
         商品情報APIリクエスト.setGteDate(today.minusYears(3).format(DateTimeFormatter.ofPattern(DATETIME_ISO_PATTERN)));

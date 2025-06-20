@@ -159,15 +159,14 @@ public class 商品情報APIリクエスト {
      *
      * @param apiId APIID
      * @param affiliateId アフィリエイトID
-     * @param site サイト
+     * @param floor フロアコード
      */
-    public 商品情報APIリクエスト(final String apiId, final String affiliateId) {
-        this(apiId, affiliateId, "FANZA", "digital", "videoa");
-    }
-    public 商品情報APIリクエスト(final String apiId, final String affiliateId, final String site, final String service, final String floor) {
+    public 商品情報APIリクエスト(final String apiId, final String affiliateId, final フロア floor) {
         this.apiId = apiId;
         this.affiliateId = affiliateId;
-        this.site = site;
+        this.site = floor.getSite();
+        this.service = floor.getService();
+        this.floor = floor.getFloor();
     }
 
     /**
@@ -184,6 +183,46 @@ public class 商品情報APIリクエスト {
             this.offset = String.valueOf(numOffset + numHits);
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("数値に変換できない文字列がセットされているため、offsetを増やせませんでした。");
+        }
+    }
+
+    public static enum フロア {
+        FANZA_動画_ビデオ("FANZA", "digital", "videoa"),
+        FANZA_動画_素人("FANZA", "digital", "videoc"),
+        FANZA_動画_成人映画("FANZA", "digital", "nikkatsu"),
+        FANZA_動画_アニメ動画("FANZA", "digital", "anime"),
+        FANZA_月額動画_見放題chデラックス("FANZA", "monthly", "premium"),
+        FANZA_月額動画_VRch("FANZA", "monthly", "vr"),
+        FANZA_月額動画_見放題ch("FANZA", "monthly", "standard"),
+        FANZA_通販_DVD("FANZA", "mono", "dvd"),
+        FANZA_通販_大人のおもちゃ("FANZA", "mono", "goods"),
+        FANZA_通販_アニメ("FANZA", "mono", "anime"),
+        FANZA_通販_PCゲーム("FANZA", "mono", "pcgame"),
+        FANZA_通販_ブック("FANZA", "mono", "book"),
+        FANZA_アダルトPCゲーム_アダルトPCゲーム("FANZA", "pcgame", "digital_pcgame"),
+        FANZA_同人_同人("FANZA", "doujin", "digital_doujin"),
+        FANZA_FANZAブックス_コミック("FANZA", "ebook", "comic"),
+        FANZA_FANZAブックス_美少女ノベル("FANZA", "ebook", "novel"),
+        FANZA_FANZAブックス_アダルト写真集("FANZA", "ebook", "photo");
+
+        private String site;
+        private String service;
+        private String floor;
+
+        private フロア(String site, String service, String floor) {
+            this.site = site;
+            this.service = service;
+            this.floor = floor;
+        }
+
+        public String getSite() {
+            return site;
+        }
+        public String getService() {
+            return service;
+        }
+        public String getFloor() {
+            return floor;
         }
     }
 }
