@@ -37,13 +37,13 @@ import copel.affiliateproductpackage.adult.unit.WebBrowser;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * アダルトアフィリエイトブログにAI生成した記事を投稿するサービス.
+ * アダルトアフィリエイトAVブログにAI生成した記事を投稿するサービス.
  *
  * @author 鈴木一矢
  *
  */
 @Slf4j
-public class AdultAffiliateBlogService {
+public class AdultAffiliateAVBlogService {
     /**
      * 環境変数「GEMINI_API_KEY」.
      */
@@ -382,8 +382,8 @@ public class AdultAffiliateBlogService {
             video.downloadAndRead(sampleMovieMp4Url);
 
             // 動画をTwitterにULしメディアIDを取得する
-            String twetterMediaId = TwitterAPI.uploadMedia(video.getContent(), MediaType.Video, TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET);
-            if (twetterMediaId == null || twetterMediaId.isEmpty()) {
+            String twitterMediaId = TwitterAPI.uploadMedia(video.getContent(), MediaType.Video, TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET);
+            if (twitterMediaId == null || twitterMediaId.isEmpty()) {
                 log.info("Twitterにアップロードできない動画のため、ツイートはせず処理を正常に終了します");
                 return;
             }
@@ -401,7 +401,7 @@ public class AdultAffiliateBlogService {
             // 作品の感想をツイート
             TwitterAPIリクエスト request = new TwitterAPIリクエスト();
             request.setText(ツイート.toString());
-            request.addMedia(twetterMediaId);
+            request.addMedia(twitterMediaId);
             TwitterAPIレスポンス response = TwitterAPI.post(request, TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET);
             log.info("動画付きツイートしました: {}", response);
 

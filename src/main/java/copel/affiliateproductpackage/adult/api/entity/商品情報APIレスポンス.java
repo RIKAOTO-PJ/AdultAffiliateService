@@ -236,6 +236,16 @@ public class 商品情報APIレスポンス {
         }
 
         /**
+         * サンプル画像が存在するかどうかを判定します.
+         *
+         * @return サンプル動画が存在すればtrue、それ以外はfalse.
+         */
+        @JsonIgnore
+        public boolean hasSampleImage() {
+            return this.sampleImageURL != null && this.sampleImageURL.hasImage();
+        }
+
+        /**
          * サンプル動画が存在するかどうかを判定します.
          *
          * @return サンプル動画が存在すればtrue、それ以外はfalse.
@@ -362,6 +372,31 @@ public class 商品情報APIレスポンス {
         /** 大サイズサンプル画像群 */
         @JsonProperty("sample_l")
         private Sample sample_l = new Sample();
+
+        @JsonIgnore
+        public boolean hasImage() {
+            return this.sample_s.size() > 0 || this.sample_l.size() > 0;
+        }
+
+        @JsonIgnore
+        public List<String> getSamples() {
+            return this.sample_l.size() > 0 ? this.sample_l.getImage() : this.sample_s.getImage();
+        }
+
+        @JsonIgnore
+        public boolean is同人Comic() {
+            boolean result = !getSamples().isEmpty() &&
+                   getSamples().get(0).split("/").length > 4 &&
+                   "comic".equals(getSamples().get(0).split("/")[4]);
+            return result;
+        }
+
+        @JsonIgnore
+        public boolean is同人Game() {
+            return !getSamples().isEmpty() &&
+                    getSamples().get(0).split("/").length > 4 &&
+                    "game".equals(getSamples().get(0).split("/")[4]);
+        }
     }
 
     @Data
@@ -370,6 +405,11 @@ public class 商品情報APIレスポンス {
         /** サンプル画像URL一覧 */
         @JsonProperty("image")
         private List<String> image = new ArrayList<String>();
+
+        @JsonIgnore
+        public int size() {
+            return this.image.size();
+        }
     }
 
     @Data

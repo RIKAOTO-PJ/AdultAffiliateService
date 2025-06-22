@@ -91,6 +91,8 @@ public class TwitterAPIレスポンス {
                 return "同じ内容のツイートを連続で投稿する事はできません。";
             case "Too Many Requests":
                 return "時間内のリクエスト数制限に達しました。一定時間を空けた後に再度試してください。";
+            case "One or more parameters to your request was invalid":
+                return "1つ以上のパラメータが不正です";
             default:
                 return this.detail;
         }

@@ -4,9 +4,9 @@ import java.io.IOException;
 
 import org.junit.jupiter.api.Test;
 
-class AdultAffiliateBlogServiceTest {
+class AdultAffiliateAVBlogServiceTest {
     @Test
     void test() throws IOException, RuntimeException, InterruptedException {
-        AdultAffiliateBlogService.execute();
+        AdultAffiliateAVBlogService.execute();
     }
 }

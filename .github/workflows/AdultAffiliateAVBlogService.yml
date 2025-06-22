@@ -1,0 +1,72 @@
+name: 【アダルトアフィリエイト】FANZA ASP→WordPressのAVブログ記事自動投稿
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 22 * * *'  # 日本時間 7:00
+    - cron: '0 2 * * *'   # 日本時間 11:00
+    - cron: '0 13 * * *'  # 日本時間 22:00
+
+jobs:
+  AdultAffiliateAVBlogService:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 開始時間を記録
+        id: start
+        run: |
+          echo "##[group]ジョブ開始時間" && date +"%Y-%m-%d %H:%M:%S" && echo "##[endgroup]"
+          echo "START_TIME=$(date +%s)" >> $GITHUB_ENV
+
+      - name: コードをチェックアウト
+        uses: actions/checkout@v3
+
+      - name: Java17をセットアップ
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Chromeをインストール
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
+      - name: Chromeのバージョンを取得
+        id: get_chrome_version
+        run: |
+          version=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+')
+          echo "chrome_version=$version" >> $GITHUB_OUTPUT
+
+      - name: ChromeDriverをセットアップ（Chromeのバージョンに合わせる）
+        uses: nanasess/setup-chromedriver@v2
+        with:
+          chromedriver-version: ${{ steps.get_chrome_version.outputs.chrome_version }}
+
+      - name: Mavenパッケージをビルド(テストコードはコンパイルしない)
+        run: mvn clean package -Dmaven.test.skip=true
+
+      - name: 記事を投稿
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # GoogleGeminiのAPIキー
+          FANZA_API_KEY: ${{ secrets.FANZA_API_KEY }} # FANZAのAPIキー
+          FANZA_AFFILIATE_ID: ${{ secrets.FANZA_AFFILIATE_ID }} # FANZAのアフィリエイトID
+          WORDPRESS_MEDIA_ID: ${{ secrets.WORDPRESS_MEDIA_ID }} # WordPressのドメイン
+          WORDPRESS_USER_NAME: ${{ secrets.WORDPRESS_USER_NAME }} # WordPressの投稿者ユーザーID
+          WORDPRESS_APPLICATION_PASSWORD: ${{ secrets.WORDPRESS_APPLICATION_PASSWORD }} # WordPressのアプリケーションパスワード
+          TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }} # TwitterのAPIキー
+          TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }} # TwitterのAPIシークレットキー
+          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }} # Twitterのアクセ
+          TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }} # Twitterのアクセストークンシークレット
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }} # AWSのアクセスキーID
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }} # AWSのシークレットアクセスキー
+        run: |
+          mvn exec:java -Dexec.mainClass="copel.affiliateproductpackage.adult.service.AdultAffiliateAVBlogService" -Dexec.classpathScope=runtime
+
+      - name: 終了時間を記録
+        env:
+          START_TIME: ${{ env.START_TIME }}
+        run: |
+          echo "##[group]ジョブ終了時間" && date +"%Y-%m-%d %H:%M:%S" && echo "##[endgroup]"
+          END_TIME=$(date +%s)
+          DURATION=$((END_TIME - START_TIME))
+          echo "実行時間は ${DURATION} 秒でした。"

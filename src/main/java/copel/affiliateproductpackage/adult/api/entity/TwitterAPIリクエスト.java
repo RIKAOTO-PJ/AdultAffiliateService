@@ -14,31 +14,40 @@ import lombok.Data;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class TwitterAPIリクエスト {
     @JsonProperty("text")
     private String text = "";
 
     @JsonProperty("media")
-    private Media media = new Media();
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private Media media = null;
 
     @JsonProperty("reply")
-    private Reply reply = new Reply();
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private Reply reply = null;
 
     @JsonIgnore
     public void setReplyTweetId(final String tweetId) {
-        this.reply = new Reply();
-        this.reply.setIn_reply_to_tweet_id(tweetId);
+        if (tweetId != null && !tweetId.isEmpty()) {
+            this.reply = new Reply();
+            this.reply.setIn_reply_to_tweet_id(tweetId);
+        } else {
+            this.reply = null;
+        }
     }
 
     @JsonIgnore
     public void addMedia(final String mediaId) {
-        this.media.getMedia_ids().add(mediaId);
+        if (mediaId != null && !mediaId.isEmpty()) 
+            (media = media == null ? new Media() : media).getMedia_ids().add(mediaId);
     }
 
     @Override
     public String toString() {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
         try {
             return objectMapper.writeValueAsString(this);
         } catch (JsonProcessingException e) {
@@ -48,6 +57,7 @@ public class TwitterAPIリクエスト {
 
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private static class Media {
         @JsonProperty("media_ids")
         private List<String> media_ids = new ArrayList<String>();
@@ -55,6 +65,7 @@ public class TwitterAPIリクエスト {
 
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private static class Reply {
         @JsonProperty("in_reply_to_tweet_id")
         private String in_reply_to_tweet_id = "";
