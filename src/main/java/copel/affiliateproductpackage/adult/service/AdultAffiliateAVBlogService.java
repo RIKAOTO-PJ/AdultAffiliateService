@@ -32,6 +32,7 @@ import copel.affiliateproductpackage.adult.gpt.Gemini;
 import copel.affiliateproductpackage.adult.gpt.GptAnswer;
 import copel.affiliateproductpackage.adult.gpt.Prompt;
 import copel.affiliateproductpackage.adult.gpt.Transformer;
+import copel.affiliateproductpackage.adult.unit.Image;
 import copel.affiliateproductpackage.adult.unit.Video;
 import copel.affiliateproductpackage.adult.unit.WebBrowser;
 import lombok.extern.slf4j.Slf4j;
@@ -370,21 +371,37 @@ public class AdultAffiliateAVBlogService {
 
         // Twitterで作品紹介する
         try {
+            String twitterMediaId = null;
+
             // mp4形式の動画が取得できるなら、ツイートを行う
             String sampleMovieMp4Url = item.getSampleMovieMp4Url();
             if (sampleMovieMp4Url == null) {
-                log.info("mp4形式の動画が見つからないため、ツイートはせず処理を正常に終了します");
-                return;
+                log.info("mp4形式の動画が見つからないため、サンプル画像でツイートします");
+                if (!item.getSampleImageURL().hasImage()) {
+                    log.info("サンプル画像も見つかりませんでした。処理を終了します");
+                    return;
+                }
+
+                // サンプル画像のバイナリデータをDL
+                Image image = new Image();
+                image.downloadAndRead(item.getSampleImageURL().getSamples().get(0));
+
+                // 画像をTwitterにULしメディアIDを取得する
+                twitterMediaId = TwitterAPI.uploadMedia(image.getContent(), MediaType.Image, TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET);
+            } else {
+                log.info("mp4形式の動画が見つかりました");
+
+                // 動画のバイナリデータをDL
+                Video video = new Video();
+                video.downloadAndRead(sampleMovieMp4Url);
+
+                // 動画をTwitterにULしメディアIDを取得する
+                twitterMediaId = TwitterAPI.uploadMedia(video.getContent(), MediaType.Video, TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET);
             }
 
-            // 動画のバイナリデータをDL
-            Video video = new Video();
-            video.downloadAndRead(sampleMovieMp4Url);
-
-            // 動画をTwitterにULしメディアIDを取得する
-            String twitterMediaId = TwitterAPI.uploadMedia(video.getContent(), MediaType.Video, TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET);
+            // メディアIDが取得できていない場合、処理を中止
             if (twitterMediaId == null || twitterMediaId.isEmpty()) {
-                log.info("Twitterにアップロードできない動画のため、ツイートはせず処理を正常に終了します");
+                log.info("Twitterにアップロードできないファイルのため、ツイートはせず処理を正常に終了します");
                 return;
             }
 
@@ -403,7 +420,7 @@ public class AdultAffiliateAVBlogService {
             request.setText(ツイート.toString());
             request.addMedia(twitterMediaId);
             TwitterAPIレスポンス response = TwitterAPI.post(request, TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET);
-            log.info("動画付きツイートしました: {}", response);
+            log.info("ツイートしました: {}", response);
 
             // アフィリエイトリンクをリプライにぶら下げる
             request = new TwitterAPIリクエスト();

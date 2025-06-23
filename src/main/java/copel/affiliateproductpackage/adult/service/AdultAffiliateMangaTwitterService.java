@@ -166,10 +166,13 @@ public class AdultAffiliateMangaTwitterService {
                 TwitterAPIリクエスト.setText(item.getTitle() + "(" + Integer.toString(i + 2) + "/" + Integer.toString(postCount + 1) + ")");
                 TwitterAPIリクエスト.setReplyTweetId(response.getTweetId());
                 try {
+                    TwitterAPIリクエスト.addMedia(mediaIdList.get(i * 4));
                     TwitterAPIリクエスト.addMedia(mediaIdList.get(i * 4 + 1));
                     TwitterAPIリクエスト.addMedia(mediaIdList.get(i * 4 + 2));
                     TwitterAPIリクエスト.addMedia(mediaIdList.get(i * 4 + 3));
-                    TwitterAPIリクエスト.addMedia(mediaIdList.get(i * 4 + 4));
+                    if ((i * 4 + 4) == mediaIdList.size()) {
+                        isContinue = false;
+                    }
                 } catch (IndexOutOfBoundsException e) {
                     isContinue = false;
                 }
