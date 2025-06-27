@@ -181,6 +181,7 @@ public class GptAnswer {
     public void clean() {
         if (this.answer != null) {
             this.answer = this.answer.replace("```html", "").replace("```", "");
+            this.answer = this.answer.replace("---", "");
         }
     }
     /**

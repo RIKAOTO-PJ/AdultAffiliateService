@@ -3,7 +3,6 @@ name: 【アダルトアフィリエイト】FANZA ASP→WordPressのAVブログ
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 22 * * *'  # 日本時間 7:00
     - cron: '0 2 * * *'   # 日本時間 11:00
     - cron: '0 13 * * *'  # 日本時間 22:00
 

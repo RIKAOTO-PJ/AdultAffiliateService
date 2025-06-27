@@ -3,7 +3,6 @@ name: 【アダルトアフィリエイト】FANZA ASP→Twitterに同人漫画�
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 23 * * *'  # 日本時間 8:00
     - cron: '0 2 * * *'   # 日本時間 11:00
     - cron: '0 13 * * *'  # 日本時間 22:00
 
